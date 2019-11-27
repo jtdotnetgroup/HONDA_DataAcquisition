@@ -29,13 +29,14 @@
         private void InitializeComponent()
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.btnPath = new System.Windows.Forms.Button();
+            this.txtPath = new System.Windows.Forms.TextBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.numericUpDown1 = new System.Windows.Forms.NumericUpDown();
             this.btnStart = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
-            this.btnPath = new System.Windows.Forms.Button();
             this.txtLog = new System.Windows.Forms.TextBox();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
@@ -52,7 +53,7 @@
             // splitContainer1.Panel1
             // 
             this.splitContainer1.Panel1.Controls.Add(this.btnPath);
-            this.splitContainer1.Panel1.Controls.Add(this.textBox1);
+            this.splitContainer1.Panel1.Controls.Add(this.txtPath);
             this.splitContainer1.Panel1.Controls.Add(this.label2);
             this.splitContainer1.Panel1.Controls.Add(this.label1);
             this.splitContainer1.Panel1.Controls.Add(this.numericUpDown1);
@@ -64,6 +65,33 @@
             this.splitContainer1.Size = new System.Drawing.Size(800, 450);
             this.splitContainer1.SplitterDistance = 39;
             this.splitContainer1.TabIndex = 0;
+            // 
+            // btnPath
+            // 
+            this.btnPath.Location = new System.Drawing.Point(755, 9);
+            this.btnPath.Name = "btnPath";
+            this.btnPath.Size = new System.Drawing.Size(32, 23);
+            this.btnPath.TabIndex = 5;
+            this.btnPath.Text = "...";
+            this.btnPath.UseVisualStyleBackColor = true;
+            this.btnPath.Click += new System.EventHandler(this.btnPath_Click);
+            // 
+            // txtPath
+            // 
+            this.txtPath.Location = new System.Drawing.Point(330, 10);
+            this.txtPath.Name = "txtPath";
+            this.txtPath.ReadOnly = true;
+            this.txtPath.Size = new System.Drawing.Size(419, 21);
+            this.txtPath.TabIndex = 4;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(241, 14);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(83, 12);
+            this.label2.TabIndex = 3;
+            this.label2.Text = "DAT文件目录：";
             // 
             // label1
             // 
@@ -89,33 +117,7 @@
             this.btnStart.TabIndex = 0;
             this.btnStart.Text = "开始采集";
             this.btnStart.UseVisualStyleBackColor = true;
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(241, 14);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(83, 12);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "DAT文件目录：";
-            // 
-            // textBox1
-            // 
-            this.textBox1.Location = new System.Drawing.Point(330, 10);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.ReadOnly = true;
-            this.textBox1.Size = new System.Drawing.Size(419, 21);
-            this.textBox1.TabIndex = 4;
-            // 
-            // btnPath
-            // 
-            this.btnPath.Location = new System.Drawing.Point(755, 9);
-            this.btnPath.Name = "btnPath";
-            this.btnPath.Size = new System.Drawing.Size(32, 23);
-            this.btnPath.TabIndex = 5;
-            this.btnPath.Text = "...";
-            this.btnPath.UseVisualStyleBackColor = true;
-            this.btnPath.Click += new System.EventHandler(this.btnPath_Click);
+            this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
             // txtLog
             // 
@@ -135,11 +137,13 @@
             this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.splitContainer1);
             this.Name = "FrmMain";
-            this.Text = "Form1";
+            this.Text = "采集数据";
+            this.Load += new System.EventHandler(this.FrmMain_Load);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel1.PerformLayout();
             this.splitContainer1.Panel2.ResumeLayout(false);
             this.splitContainer1.Panel2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
             this.ResumeLayout(false);
@@ -153,7 +157,7 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.NumericUpDown numericUpDown1;
         private System.Windows.Forms.Button btnPath;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox txtPath;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox txtLog;
     }
