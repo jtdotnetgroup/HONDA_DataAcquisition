@@ -33,14 +33,14 @@
             this.txtPath = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.numericUpDown1 = new System.Windows.Forms.NumericUpDown();
+            this.numInterval = new System.Windows.Forms.NumericUpDown();
             this.btnStart = new System.Windows.Forms.Button();
             this.txtLog = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -56,7 +56,7 @@
             this.splitContainer1.Panel1.Controls.Add(this.txtPath);
             this.splitContainer1.Panel1.Controls.Add(this.label2);
             this.splitContainer1.Panel1.Controls.Add(this.label1);
-            this.splitContainer1.Panel1.Controls.Add(this.numericUpDown1);
+            this.splitContainer1.Panel1.Controls.Add(this.numInterval);
             this.splitContainer1.Panel1.Controls.Add(this.btnStart);
             // 
             // splitContainer1.Panel2
@@ -102,12 +102,17 @@
             this.label1.TabIndex = 2;
             this.label1.Text = "采集间隔(秒)：";
             // 
-            // numericUpDown1
+            // numInterval
             // 
-            this.numericUpDown1.Location = new System.Drawing.Point(184, 10);
-            this.numericUpDown1.Name = "numericUpDown1";
-            this.numericUpDown1.Size = new System.Drawing.Size(50, 21);
-            this.numericUpDown1.TabIndex = 1;
+            this.numInterval.Location = new System.Drawing.Point(184, 10);
+            this.numInterval.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.numInterval.Name = "numInterval";
+            this.numInterval.Size = new System.Drawing.Size(50, 21);
+            this.numInterval.TabIndex = 1;
             // 
             // btnStart
             // 
@@ -145,7 +150,7 @@
             this.splitContainer1.Panel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numInterval)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -155,7 +160,7 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Button btnStart;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.NumericUpDown numericUpDown1;
+        private System.Windows.Forms.NumericUpDown numInterval;
         private System.Windows.Forms.Button btnPath;
         private System.Windows.Forms.TextBox txtPath;
         private System.Windows.Forms.Label label2;

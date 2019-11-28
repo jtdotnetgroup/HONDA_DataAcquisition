@@ -3,14 +3,18 @@ using DATFileReader.Model;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using System.Windows.Forms;
 using System.Data.Linq;
 using System.Linq;
+using System.Threading.Tasks;
+using hn.Common;
 
 namespace DATFileReader
 {
     public partial class FrmMain : Form
     {
+        private bool isRunning { get; set; }
         #region 窗体
         public FrmMain()
         {
@@ -20,6 +24,9 @@ namespace DATFileReader
         private void FrmMain_Load(object sender, EventArgs e)
         {
             Init();
+            var scanInterval =Convert.ToInt32( ConfigurationManager.AppSettings["ScanInterval"])/1000;
+            numInterval.Value = scanInterval;
+            LogHelper.Init(new TextBoxWriter(txtLog));
         }
         #endregion
 
@@ -47,46 +54,76 @@ namespace DATFileReader
         /// </summary> 
         private void btnPath_Click(object sender, EventArgs e)
         {
-            //using (var ofd= new FolderBrowserDialog())
-            //{
-            //    if (ofd.ShowDialog() == DialogResult.OK)
-            //    {
-            //        ofd.Description = "请选择DAT文件所在目录";
-            //    }
-            //}
-
-            using (var ofd = new OpenFileDialog())
+            using (var ofd = new FolderBrowserDialog())
             {
+                ofd.Description = "请选择DAT文件所在目录";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
-                    txtPath.Text = ofd.FileName;
-                    DatFileReader reader = new DatFileReader();
-                    var txt = reader.Open(ofd.FileName);
-                    txtLog.Text = txt;
+                    txtPath.Text = ofd.SelectedPath;
                 }
             }
+
+          
         }
         /// <summary>
         /// 开始采集
         /// </summary>
         private void btnStart_Click(object sender, EventArgs e)
         {
-            string[] row = txtLog.Text.Split(new string[] { ",\r\n" }, StringSplitOptions.None);
-            string StrType = txtPath.Text.Substring(txtPath.Text.Length - 7).Substring(0, 3).ToUpper();
-            switch (StrType)
+
+            Timer timer=new Timer();
+            timer.Interval = Convert.ToInt32(numInterval.Value*100);
+            timer.Tick += Timer_Tick;
+            timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            var dirPath = txtPath.Text;
+            if (!isRunning)
             {
-                case "STA":
+                var task = new Task(() =>
+                {
+                    isRunning = true;
+                    try
                     {
-                        STAAnalysis(row);
-                        break;
+                        var filesName = DatFileReader.ScanDir(dirPath);
+                        
+                        foreach (var f in filesName)
+                        {
+                            LogHelper.Info($"解释文件【{f}】");
+                            var data = DatFileReader.Open(f);
+                            string[] row = data.Split(new string[] { ",\r\n" }, StringSplitOptions.None);
+                            string StrType = f.Substring(f.Length - 7).Substring(0, 3).ToUpper();
+                            switch (StrType)
+                            {
+                                case "STA":
+                                {
+                                    STAAnalysis(row);
+                                    break;
+                                }
+                                case "DAT":
+                                {
+                                    DATAnalysis(row);
+                                    break;
+                                }
+                            }
+                        }
+
+                        isRunning = false;
+
                     }
-                case "DAT":
+                    catch (Exception exception)
                     {
-                        DATAnalysis(row);
-                        break;
+                        LogHelper.Error(exception);
+                        isRunning = false;
                     }
+                });
+
+                task.Start();
             }
         }
+
         /// <summary>
         /// DAT文件解析
         /// </summary>
@@ -260,14 +297,9 @@ namespace DATFileReader
 
             #endregion
             // 需要保存的对象以及集合 vi,temperaList,pressureRecords
-            vSQL = SqlBuilderHelper.InsertSql(vi, "VerInfo");
-            vSQL = SqlBuilderHelper.BulkInsertSql(temperaList, "TEMPerA") + System.Environment.NewLine;
 
-            // 开始插入数据库
-            if (MySqlHelper.ExecuteNonQuery(vSQL) > 0)
-            {
-                MessageBox.Show("插入成功");
-            }
+           SaveData(vi,temperaList,pressureRecords);
+          
         }
         /// <summary>
         /// STA文件解析
@@ -458,6 +490,7 @@ namespace DATFileReader
             
             // 1
             Dictionary<string, string[]> keyValuePairs = new Dictionary<string, string[]>();
+
             foreach (var tmp in dic[CoolingValve])
             { 
                 foreach (var item in tmp.Value) {
@@ -628,11 +661,62 @@ namespace DATFileReader
 
             #region 保存到数据库
             // 开始插入数据库
-            if (MySqlHelper.ExecuteNonQuery(vSQL) > 0)
-            {
-                MessageBox.Show("插入成功");
-            }
+            SaveData(vi, temperaList, pressureRecords);
             #endregion 
         }
+
+        void SaveData(VerInfo vi,List<TEMPerA> temperaList,List<PressureRecord> pressureRecords)
+        {
+            string sql = $"SELECT COUNT(*) FROM  VerInfo WHERE QR='{vi.QR}' AND DeviceNum='{vi.DeviceNum}' AND DSType='{vi.DSType}'";
+            var count =Convert.ToInt32( MySqlHelper.ExecuteScalar(sql));
+
+            if (count > 0)
+            {
+                return;
+            }
+
+            using (var conn = MySqlHelper.GetConnection())
+            {
+                if (conn.State == ConnectionState.Closed)
+                {
+                    conn.Open();
+                }
+
+                var tran = conn.BeginTransaction();
+
+                MySqlHelper.InsertWitTransation(vi, "VerInfo", tran);
+
+                temperaList.ForEach(p =>
+                {
+                    try
+                    {
+                        MySqlHelper.InsertWitTransation(p, "TEMPerA", tran);
+                    }
+                    catch (Exception e)
+                    {
+                        LogHelper.Error(e);
+                    }
+                });
+
+                pressureRecords.ForEach(p =>
+                {
+                    try
+                    {
+                        MySqlHelper.InsertWitTransation(p, "PressureRecord", tran);
+                    }
+                    catch (Exception e)
+                    {
+                        LogHelper.Error(e);
+                    }
+
+                });
+
+                tran.Commit();
+
+                LogHelper.Info($"【{vi.QR}】数据保存成功");
+            }
+        }
+
+       
     }
 }

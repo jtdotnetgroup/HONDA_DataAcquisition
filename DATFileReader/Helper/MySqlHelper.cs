@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using MySql.Data.MySqlClient;
 using System.Data;
 using System.Configuration;
+using DATFileReader.Helper;
+using hn.Common;
 
 namespace DATFileReader
 {
@@ -37,6 +39,28 @@ namespace DATFileReader
                 return val;
             }
         }
+
+        public static object ExecuteScalar(string sql)
+        {
+            MySqlCommand cmd = new MySqlCommand();
+
+            using (MySqlConnection conn = new MySqlConnection(Conn))
+            {
+                conn.Open();
+                cmd.CommandText = sql;
+                cmd.Connection = conn;
+                var val = cmd.ExecuteScalar();
+                return val;
+            }
+        }
+
+
+        public static MySqlConnection GetConnection()
+        {
+            var conn = new MySqlConnection(Conn);
+            return conn;
+        }
+
         /// <summary>
         /// 给定连接的数据库用假设参数执行一个sql命令（不返回数据集）
         /// </summary>
@@ -316,13 +340,12 @@ namespace DATFileReader
             try
             {
                 conn.Open();//打开通道，建立连接，可能出现异常,使用try catch语句
-                Console.WriteLine("已经建立连接");
                 return true;
                 //在这里使用代码对数据库进行增删查改
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message); 
+                LogHelper.Error(ex.Message); 
                 return false;
             }
             finally
@@ -331,6 +354,20 @@ namespace DATFileReader
             }
         }
 
-         
+        public static int Insert<T>(T entity, string tableName) where T:class
+        {
+            string sql = SqlBuilderHelper.InsertSql(entity, tableName);
+
+            return ExecuteNonQuery(sql);
+
+        }
+
+        public static int InsertWitTransation<T>(T entity, string tableName,MySqlTransaction tran) where T : class
+        {
+            string sql = SqlBuilderHelper.InsertSql(entity, tableName);
+            return ExecuteNonQuery(tran, CommandType.Text, sql);
+        }
+
+
     }
 }
