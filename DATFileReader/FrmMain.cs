@@ -14,29 +14,29 @@ namespace DATFileReader
 {
     public partial class FrmMain : Form
     {
-        private bool isRunning { get; set; }
+        
         #region 窗体
         public FrmMain()
         {
             InitializeComponent();
+            
         }
 
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            Init();
-            var scanInterval =Convert.ToInt32( ConfigurationManager.AppSettings["ScanInterval"])/1000;
-            numInterval.Value = scanInterval;
-            LogHelper.Init(new TextBoxWriter(txtLog));
-        }
+            Init(); 
+        }  
         #endregion
 
-        #region 定义初始化字典数据
-        Dictionary<string, string> dicCode = new Dictionary<string, string>()
-        {
-
-        };
-        string vSQL = "";
+        #region 定义初始化公共变量
+        // 是否运行
+        private bool isRunning { get; set; } 
         string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();
+
+        private static string configPath = string.Empty;
+        private static string configName = "DATFileReader.exe.config";
+        public bool SD = false;
+        Timer timerInit = null;
         #endregion
 
         /// <summary>
@@ -44,10 +44,26 @@ namespace DATFileReader
         /// </summary>
         void Init()
         {
+            if (!string.IsNullOrWhiteSpace(DeviceNum)) { MessageBox.Show("请设置机台号!");Application.Exit(); } 
+            var scanInterval = Convert.ToInt32(ConfigurationManager.AppSettings["ScanInterval"]) / 1000;
+            numInterval.Value = scanInterval;
+            LogHelper.Init(new TextBoxWriter(txtLog));
+            configPath = System.Windows.Forms.Application.StartupPath + "\\" + configName;
+            txtPath.Text = ConfigurationManager.AppSettings["dirPath"].ToString();
+            if (!(string.IsNullOrWhiteSpace(txtPath.Text))) {
+                btnStart.Visible = true;
+                if (!SD)
+                {
+                    timerInit = new Timer();
+                    timerInit.Interval = 10000;
+                    timerInit.Tick += btnStart_Click;
+                    timerInit.Start();  
+                }
+            }
             if (!MySqlHelper.IsOpen())
             {
-                MessageBox.Show("连接失败！");
-            }
+                LogHelper.Info($"网络连接失败!");
+            } 
         }
         /// <summary>
         /// 浏览文件
@@ -60,6 +76,7 @@ namespace DATFileReader
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     txtPath.Text = ofd.SelectedPath;
+                    btnStart.Visible=true;
                 }
             }
 
@@ -70,15 +87,51 @@ namespace DATFileReader
         /// </summary>
         private void btnStart_Click(object sender, EventArgs e)
         {
+            timerInit.Enabled = false;
+            timerInit.Stop();
+            SD = true;  // 表示点击过开始采集
+            Timer timer = new Timer();
+            if (btnStart.Text == "开始采集")
+            {   
+                // 保存到文件
+                SaveConfig("dirPath", txtPath.Text.ToString());
+                ConfigurationManager.RefreshSection("appSettings");
 
-            Timer timer=new Timer();
-            timer.Interval = Convert.ToInt32(numInterval.Value*100);
-            timer.Tick += Timer_Tick;
-            timer.Start();
+                timer.Interval = Convert.ToInt32(numInterval.Value * 100);
+                timer.Tick += Timer_Tick;
+                btnStart.Text = "结束采集";
+                btnPath.Visible = false;
+                timer.Start();
+                timer.Enabled = true;
+                LogHelper.Info("开始采集");
+            }
+            else
+            {
+                btnStart.Text = "开始采集";
+                btnPath.Visible = true;
+                timer.Stop();
+                timer.Enabled = false;
+                LogHelper.Info("结束采集");
+            }
         }
-
+        // 已经插入到数据库的文件
+        List<string> EdList = new List<string>();
+        // 开始采集定时器
         private void Timer_Tick(object sender, EventArgs e)
         {
+            try
+            {
+                TimerSave();
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Info($"定时解析异常：" + ex.Message);
+            } 
+        }
+        /// <summary>
+        /// 定时解析保存
+        /// </summary>
+        void TimerSave() {
             var dirPath = txtPath.Text;
             if (!isRunning)
             {
@@ -87,10 +140,12 @@ namespace DATFileReader
                     isRunning = true;
                     try
                     {
-                        var filesName = DatFileReader.ScanDir(dirPath);
-                        
+                        var filesName = DatFileReader.GetFiles(dirPath, new List<string>());
+
                         foreach (var f in filesName)
                         {
+                            // 过滤已经插入到数据库
+                            if (EdList.Any(a => a.Equals(f))) { continue; }
                             LogHelper.Info($"解释文件【{f}】");
                             var data = DatFileReader.Open(f);
                             string[] row = data.Split(new string[] { ",\r\n" }, StringSplitOptions.None);
@@ -98,16 +153,17 @@ namespace DATFileReader
                             switch (StrType)
                             {
                                 case "STA":
-                                {
-                                    STAAnalysis(row);
-                                    break;
-                                }
+                                    {
+                                        STAAnalysis(row);
+                                        break;
+                                    }
                                 case "DAT":
-                                {
-                                    DATAnalysis(row);
-                                    break;
-                                }
+                                    {
+                                        DATAnalysis(row);
+                                        break;
+                                    }
                             }
+                            EdList.Add(f);
                         }
 
                         isRunning = false;
@@ -123,7 +179,6 @@ namespace DATFileReader
                 task.Start();
             }
         }
-
         /// <summary>
         /// DAT文件解析
         /// </summary>
@@ -447,7 +502,7 @@ namespace DATFileReader
                 // 数据收集时间
                 CollectionTime = verInfo1[7],
                 // 铸造加压时间(0.1s)
-                StressTime = verInfo1[0],
+                StressTime = verInfo1[11],
                 // 制品(shot）NO
                 ProductsNo = verInfo1[2],
                 // 数据保存  年月日
@@ -664,7 +719,12 @@ namespace DATFileReader
             SaveData(vi, temperaList, pressureRecords);
             #endregion 
         }
-
+        /// <summary>
+        /// 保存数据
+        /// </summary>
+        /// <param name="vi">表头</param>
+        /// <param name="temperaList">明细数据</param>
+        /// <param name="pressureRecords">加压记录</param>
         void SaveData(VerInfo vi,List<TEMPerA> temperaList,List<PressureRecord> pressureRecords)
         {
             string sql = $"SELECT COUNT(*) FROM  VerInfo WHERE QR='{vi.QR}' AND DeviceNum='{vi.DeviceNum}' AND DSType='{vi.DSType}'";
@@ -674,6 +734,7 @@ namespace DATFileReader
             {
                 return;
             }
+            int tCount = 20; 
 
             using (var conn = MySqlHelper.GetConnection())
             {
@@ -685,38 +746,63 @@ namespace DATFileReader
                 var tran = conn.BeginTransaction();
 
                 MySqlHelper.InsertWitTransation(vi, "VerInfo", tran);
-
-                temperaList.ForEach(p =>
+                 
+                for (int i = 0; i < (int)Math.Ceiling((decimal)temperaList.Count / tCount); i++) {
+                    MySqlHelper.BulkInsertWitTransation(temperaList.Skip(i * tCount).Take(tCount).ToList(), "TEMPerA", tran); 
+                }
+                 
+                for (int i = 0; i < (int)Math.Ceiling((decimal)pressureRecords.Count / tCount); i++)
                 {
-                    try
-                    {
-                        MySqlHelper.InsertWitTransation(p, "TEMPerA", tran);
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Error(e);
-                    }
-                });
+                    MySqlHelper.BulkInsertWitTransation(pressureRecords.Skip(i * tCount).Take(tCount).ToList(), "PressureRecord", tran);
+                }
+                //temperaList.ForEach(p =>
+                //{
+                //    try
+                //    {
+                //        MySqlHelper.InsertWitTransation(p, "TEMPerA", tran);
+                //    }
+                //    catch (Exception e)
+                //    {
+                //        LogHelper.Error(e);
+                //    }
+                //});
 
-                pressureRecords.ForEach(p =>
-                {
-                    try
-                    {
-                        MySqlHelper.InsertWitTransation(p, "PressureRecord", tran);
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Error(e);
-                    }
+                //pressureRecords.ForEach(p =>
+                //{
+                //    try
+                //    {
+                //        MySqlHelper.InsertWitTransation(p, "PressureRecord", tran);
+                //    }
+                //    catch (Exception e)
+                //    {
+                //        LogHelper.Error(e);
+                //    }
 
-                });
+                //});
 
                 tran.Commit();
 
                 LogHelper.Info($"【{vi.QR}】数据保存成功");
             }
         }
+        /// <summary>
+        /// 保存Config
+        /// </summary>
+        private void SaveConfig(string key, string value)
+        {
+            ExeConfigurationFileMap ecf = new ExeConfigurationFileMap();
+            ecf.ExeConfigFilename = configPath;
+            Configuration config = System.Configuration.ConfigurationManager.OpenMappedExeConfiguration(ecf, ConfigurationUserLevel.None);
+            if (config.AppSettings.Settings[key] != null)
+            {
+                config.AppSettings.Settings[key].Value = value;
+            }
+            else
+            {
+                config.AppSettings.Settings.Add(key, value);
+            }
 
-       
+            config.Save(ConfigurationSaveMode.Modified);
+        }
     }
 }

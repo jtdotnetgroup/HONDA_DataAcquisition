@@ -367,7 +367,11 @@ namespace DATFileReader
             string sql = SqlBuilderHelper.InsertSql(entity, tableName);
             return ExecuteNonQuery(tran, CommandType.Text, sql);
         }
-
-
+        //
+        public static int BulkInsertWitTransation<T>(List<T> entity, string tableName, MySqlTransaction tran) where T : class
+        {
+            string sql = SqlBuilderHelper.BulkInsertSql(entity, tableName);
+            return ExecuteNonQuery(tran, CommandType.Text, sql);
+        } 
     }
 }

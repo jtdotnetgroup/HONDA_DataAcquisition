@@ -62,13 +62,13 @@
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.txtLog);
-            this.splitContainer1.Size = new System.Drawing.Size(800, 450);
+            this.splitContainer1.Size = new System.Drawing.Size(889, 450);
             this.splitContainer1.SplitterDistance = 39;
             this.splitContainer1.TabIndex = 0;
             // 
             // btnPath
             // 
-            this.btnPath.Location = new System.Drawing.Point(755, 9);
+            this.btnPath.Location = new System.Drawing.Point(846, 9);
             this.btnPath.Name = "btnPath";
             this.btnPath.Size = new System.Drawing.Size(32, 23);
             this.btnPath.TabIndex = 5;
@@ -81,7 +81,7 @@
             this.txtPath.Location = new System.Drawing.Point(330, 10);
             this.txtPath.Name = "txtPath";
             this.txtPath.ReadOnly = true;
-            this.txtPath.Size = new System.Drawing.Size(419, 21);
+            this.txtPath.Size = new System.Drawing.Size(510, 21);
             this.txtPath.TabIndex = 4;
             // 
             // label2
@@ -122,6 +122,7 @@
             this.btnStart.TabIndex = 0;
             this.btnStart.Text = "开始采集";
             this.btnStart.UseVisualStyleBackColor = true;
+            this.btnStart.Visible = false;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
             // txtLog
@@ -132,16 +133,17 @@
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(800, 407);
+            this.txtLog.Size = new System.Drawing.Size(889, 407);
             this.txtLog.TabIndex = 0;
             // 
             // FrmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
+            this.ClientSize = new System.Drawing.Size(889, 450);
             this.Controls.Add(this.splitContainer1);
             this.Name = "FrmMain";
+            this.ShowIcon = false;
             this.Text = "采集数据";
             this.Load += new System.EventHandler(this.FrmMain_Load);
             this.splitContainer1.Panel1.ResumeLayout(false);
