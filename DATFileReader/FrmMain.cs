@@ -33,8 +33,7 @@ namespace DATFileReader
         private bool isRunning { get; set; } 
         string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();
         string scanInterval = ConfigurationManager.AppSettings["ScanInterval"];
-        private static string configPath = string.Empty;
-        private static string configName = "DATFileReader.exe.config";
+        private static string configPath = System.Windows.Forms.Application.StartupPath + "\\" + "DATFileReader.exe.config"; 
         public bool SD = false;
         Timer timerInit = null;
         Timer timer = null;
@@ -45,12 +44,21 @@ namespace DATFileReader
         /// </summary>
         void Init()
         {
-            if (string.IsNullOrWhiteSpace(DeviceNum)) { MessageBox.Show("请设置机台号!");Application.Exit(); }
+           
+            if (string.IsNullOrWhiteSpace(DeviceNum)) {
+                if (InputDialog.Show("请输入机台号", out DeviceNum).Equals(DialogResult.OK))
+                {
+                    SaveConfig("DeviceNum", DeviceNum);
+                    ConfigurationManager.RefreshSection("appSettings");
+                }
+                else {
+                    Application.Exit();
+                } 
+            }
             if (string.IsNullOrWhiteSpace(scanInterval)) { MessageBox.Show("请设置定时扫描秒数!"); Application.Exit(); } 
             // 
             numInterval.Value = Convert.ToInt32(scanInterval) / 1000;
-            LogHelper.Init(new TextBoxWriter(txtLog));
-            configPath = System.Windows.Forms.Application.StartupPath + "\\" + configName;
+            LogHelper.Init(new TextBoxWriter(txtLog)); 
             txtPath.Text = ConfigurationManager.AppSettings["dirPath"] != null ? ConfigurationManager.AppSettings["dirPath"].ToString() : "";
             if (!(string.IsNullOrWhiteSpace(txtPath.Text))) {
                 btnStart.Visible = true;
