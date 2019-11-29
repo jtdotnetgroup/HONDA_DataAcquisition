@@ -37,6 +37,7 @@ namespace DATFileReader
         private static string configName = "DATFileReader.exe.config";
         public bool SD = false;
         Timer timerInit = null;
+        Timer timer = null;
         #endregion
 
         /// <summary>
@@ -49,7 +50,7 @@ namespace DATFileReader
             numInterval.Value = scanInterval;
             LogHelper.Init(new TextBoxWriter(txtLog));
             configPath = System.Windows.Forms.Application.StartupPath + "\\" + configName;
-            txtPath.Text = ConfigurationManager.AppSettings["dirPath"].ToString();
+            txtPath.Text = ConfigurationManager.AppSettings["dirPath"] != null ? ConfigurationManager.AppSettings["dirPath"].ToString() : "";
             if (!(string.IsNullOrWhiteSpace(txtPath.Text))) {
                 btnStart.Visible = true;
                 if (!SD)
@@ -76,21 +77,23 @@ namespace DATFileReader
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     txtPath.Text = ofd.SelectedPath;
-                    btnStart.Visible=true;
+                    btnStart.Visible = true;
                 }
-            }
-
-          
+            } 
         }
         /// <summary>
         /// 开始采集
         /// </summary>
         private void btnStart_Click(object sender, EventArgs e)
         {
-            timerInit.Enabled = false;
-            timerInit.Stop();
+            if (timerInit != null) {
+                timerInit.Enabled = false;
+                timerInit.Stop();
+            }
             SD = true;  // 表示点击过开始采集
-            Timer timer = new Timer();
+            if (timer == null) {
+                new Timer();
+            } 
             if (btnStart.Text == "开始采集")
             {   
                 // 保存到文件
