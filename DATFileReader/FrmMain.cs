@@ -98,6 +98,7 @@ namespace DATFileReader
             if (btnStart.Text == "开始采集")
             {   
                 // 保存到文件
+                SaveConfig("ScanInterval", (numInterval.Value*1000).ToString());
                 SaveConfig("dirPath", txtPath.Text.ToString());
                 ConfigurationManager.RefreshSection("appSettings");
 
