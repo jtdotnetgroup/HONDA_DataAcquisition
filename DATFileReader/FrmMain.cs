@@ -32,7 +32,7 @@ namespace DATFileReader
         // 是否运行
         private bool isRunning { get; set; } 
         string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();
-
+        string scanInterval = ConfigurationManager.AppSettings["ScanInterval"];
         private static string configPath = string.Empty;
         private static string configName = "DATFileReader.exe.config";
         public bool SD = false;
@@ -45,9 +45,10 @@ namespace DATFileReader
         /// </summary>
         void Init()
         {
-            if (!string.IsNullOrWhiteSpace(DeviceNum)) { MessageBox.Show("请设置机台号!");Application.Exit(); } 
-            var scanInterval = Convert.ToInt32(ConfigurationManager.AppSettings["ScanInterval"]) / 1000;
-            numInterval.Value = scanInterval;
+            if (string.IsNullOrWhiteSpace(DeviceNum)) { MessageBox.Show("请设置机台号!");Application.Exit(); }
+            if (string.IsNullOrWhiteSpace(scanInterval)) { MessageBox.Show("请设置定时扫描秒数!"); Application.Exit(); } 
+            // 
+            numInterval.Value = Convert.ToInt32(scanInterval) / 1000;
             LogHelper.Init(new TextBoxWriter(txtLog));
             configPath = System.Windows.Forms.Application.StartupPath + "\\" + configName;
             txtPath.Text = ConfigurationManager.AppSettings["dirPath"] != null ? ConfigurationManager.AppSettings["dirPath"].ToString() : "";
@@ -92,7 +93,7 @@ namespace DATFileReader
             }
             SD = true;  // 表示点击过开始采集
             if (timer == null) {
-                new Timer();
+                timer = new Timer();
             } 
             if (btnStart.Text == "开始采集")
             {   
@@ -120,11 +121,14 @@ namespace DATFileReader
         // 已经插入到数据库的文件
         List<string> EdList = new List<string>();
         // 开始采集定时器
+        int sm = 1;
         private void Timer_Tick(object sender, EventArgs e)
         {
             try
             {
+                LogHelper.Info($"定时扫描(次数)：" + sm);
                 TimerSave();
+                sm++;
             }
             catch (Exception ex)
             {
