@@ -8,32 +8,39 @@ using System.Windows.Forms;
 using System.Data.Linq;
 using System.Linq;
 using System.Threading.Tasks;
+using DataAccess;
+using DataAccess.CustomEnums;
+using DATFileReader.Repository;
 using hn.Common;
 
 namespace DATFileReader
 {
     public partial class FrmMain : Form
     {
-        
+
+        VerInfoRepository verInfoRepository = new VerInfoRepository();
+        TEMPerARepository temPerARepository = new TEMPerARepository();
+        PressureRepository pressureRepository = new PressureRepository();
+
         #region 窗体
         public FrmMain()
         {
             InitializeComponent();
-            
+
         }
 
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            Init(); 
-        }  
+            Init();
+        }
         #endregion
 
         #region 定义初始化公共变量
         // 是否运行
-        private bool isRunning { get; set; } 
+        private bool isRunning { get; set; }
         string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();
         string scanInterval = ConfigurationManager.AppSettings["ScanInterval"];
-        private static string configPath = System.Windows.Forms.Application.StartupPath + "\\" + "DATFileReader.exe.config"; 
+        private static string configPath = System.Windows.Forms.Application.StartupPath + "\\" + "DATFileReader.exe.config";
         public bool SD = false;
         Timer timerInit = null;
         Timer timer = null;
@@ -44,36 +51,39 @@ namespace DATFileReader
         /// </summary>
         void Init()
         {
-           
-            if (string.IsNullOrWhiteSpace(DeviceNum)) {
+
+            if (string.IsNullOrWhiteSpace(DeviceNum))
+            {
                 if (InputDialog.Show("请输入机台号", out DeviceNum).Equals(DialogResult.OK))
                 {
                     SaveConfig("DeviceNum", DeviceNum);
                     ConfigurationManager.RefreshSection("appSettings");
                 }
-                else {
+                else
+                {
                     Application.Exit();
-                } 
+                }
             }
-            if (string.IsNullOrWhiteSpace(scanInterval)) { MessageBox.Show("请设置定时扫描秒数!"); Application.Exit(); } 
+            if (string.IsNullOrWhiteSpace(scanInterval)) { MessageBox.Show("请设置定时扫描秒数!"); Application.Exit(); }
             // 
             numInterval.Value = Convert.ToInt32(scanInterval) / 1000;
-            LogHelper.Init(new TextBoxWriter(txtLog)); 
+            LogHelper.Init(new TextBoxWriter(txtLog));
             txtPath.Text = ConfigurationManager.AppSettings["dirPath"] != null ? ConfigurationManager.AppSettings["dirPath"].ToString() : "";
-            if (!(string.IsNullOrWhiteSpace(txtPath.Text))) {
+            if (!(string.IsNullOrWhiteSpace(txtPath.Text)))
+            {
                 btnStart.Visible = true;
                 if (!SD)
                 {
                     timerInit = new Timer();
                     timerInit.Interval = 10000;
                     timerInit.Tick += btnStart_Click;
-                    timerInit.Start();  
+                    timerInit.Start();
                 }
             }
             if (!MySqlHelper.IsOpen())
             {
                 LogHelper.Info($"网络连接失败!");
-            } 
+            }
         }
         /// <summary>
         /// 浏览文件
@@ -88,25 +98,28 @@ namespace DATFileReader
                     txtPath.Text = ofd.SelectedPath;
                     btnStart.Visible = true;
                 }
-            } 
+            }
         }
         /// <summary>
         /// 开始采集
         /// </summary>
         private void btnStart_Click(object sender, EventArgs e)
         {
-            if (timerInit != null) {
+            EdList=new List<string>();
+            if (timerInit != null)
+            {
                 timerInit.Enabled = false;
                 timerInit.Stop();
             }
             SD = true;  // 表示点击过开始采集
-            if (timer == null) {
+            if (timer == null)
+            {
                 timer = new Timer();
-            } 
+            }
             if (btnStart.Text == "开始采集")
-            {   
+            {
                 // 保存到文件
-                SaveConfig("ScanInterval", (numInterval.Value*1000).ToString());
+                SaveConfig("ScanInterval", (numInterval.Value * 1000).ToString());
                 SaveConfig("dirPath", txtPath.Text.ToString());
                 ConfigurationManager.RefreshSection("appSettings");
 
@@ -142,12 +155,13 @@ namespace DATFileReader
             catch (Exception ex)
             {
                 LogHelper.Info($"定时解析异常：" + ex.Message);
-            } 
+            }
         }
         /// <summary>
         /// 定时解析保存
         /// </summary>
-        void TimerSave() {
+        void TimerSave()
+        {
             var dirPath = txtPath.Text;
             if (!isRunning)
             {
@@ -262,23 +276,33 @@ namespace DATFileReader
             }
             #endregion
 
-            #region 开始形成Class
-            VerInfo vi = new VerInfo()
+            var compares = new Dictionary<string, CompareEnum>();
+            compares.Add("QR", CompareEnum.Equal);
+            var vi = verInfoRepository.GetSingle(new {QR = tmpInfo[1]}, compares);
+
+            if (vi == null)
             {
-                FID = Guid.NewGuid().ToString(),
-                DSType = "DAT",
-                AppVerNo = tmpInfo[0],
-                QR = tmpInfo[1],
-                CollectionTime = tmpInfo[2],
-                StressTime = tmpInfo[3],
-                DeviceNum = DeviceNum,
-            };
+                vi = new VerInfo {FID = Guid.NewGuid().ToString(), DSType = "DAT"};
+            }
+            else
+            {
+                vi.DSType = "true";
+            }
+
+            vi.AppVerNo = tmpInfo[0];
+            vi.QR = tmpInfo[1];
+            vi.CollectionTime = tmpInfo[2];
+            vi.PressureDuration = tmpInfo[3];
+            vi.DeviceNum = DeviceNum;
+            #region 开始形成Class
+
             List<TEMPerA> temperaList = new List<TEMPerA>();
             TEMPerA tempera = null;
             List<string> tmpStringList = new List<string>();
             string[] tmpList = null;
             string[] tmpList2 = { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
             string[] tmpList3 = { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
+
             foreach (var item in dic)
             {
                 foreach (var tmp in item.Value)
@@ -362,6 +386,8 @@ namespace DATFileReader
                     pressureRecords.Add(record);
                 }
             }
+
+
             #endregion
 
             #region 保存到数据库
@@ -369,8 +395,8 @@ namespace DATFileReader
             #endregion
             // 需要保存的对象以及集合 vi,temperaList,pressureRecords
 
-           SaveData(vi,temperaList,pressureRecords);
-          
+            SaveData(vi, temperaList, pressureRecords);
+
         }
         /// <summary>
         /// STA文件解析
@@ -500,83 +526,84 @@ namespace DATFileReader
             #endregion
 
             #region 开始形成Class
-            // 
-            VerInfo vi = new VerInfo()
+            var compares = new Dictionary<string, CompareEnum>();
+            compares.Add("QR", CompareEnum.Equal);
+            var vi = verInfoRepository.GetSingle(new { QR = verInfo1[1] }, compares);
+            if (vi == null)
             {
-                // FID
-                FID = Guid.NewGuid().ToString(),
-                // 文件类型
-                DSType = "STA",
-                // 机号
-                DeviceNum = DeviceNum,
-                // 机种名
-                MachineName = verInfo1[5],
-                // 操作者NO
-                CZRNO = verInfo1[6],
-                // 二维码
-                QR = verInfo1[1],
-                // 数据收集时间
-                CollectionTime = verInfo1[7],
-                // 铸造加压时间(0.1s)
-                StressTime = verInfo1[11],
-                // 制品(shot）NO
-                ProductsNo = verInfo1[2],
-                // 数据保存  年月日
-                YMD = verInfo1[3],
-                // 数据保存  时分秒
-                HMS = verInfo1[4],
-                // 注汤前时间
-                TTime = verInfo1[8],
-                // 预备
-                Prepare = verInfo1[9],
-                // 溶汤温度
-                DissolvingTemperature = verInfo1[10],
-                // 铸造机加压时间
-                HHStressTime = verInfo1[11],
-                // 铸造机冷却时间
-                HHCoolingTime = verInfo1[12],
-                // 铸造机抽芯时间
-                HHLooseCoreTime = verInfo1[13],
-                // 最终加压未使用
-                EndStressNotUsed = verInfo1[14],
-                // S阀用下限值
-                SValvesLower = verInfo2[0],
-                // S阀用上限值
-                SValvesUpper = verInfo2[1],
-                // M阀用下限值
-                MValvesLower = verInfo2[2],
-                // M阀用上限值
-                MValvesUpper = verInfo2[3],
-                // 加压开始
-                StressStart = verInfo2[4],
-                // 加压中
-                Stressing = verInfo2[5],
-                // 据点以及应用程序版本NO
-                AppVerNo = verInfo1[0],
-            };
+                vi = new VerInfo() { FID = Guid.NewGuid().ToString() };
+                vi.DSType = "STA";
+            }
+            else
+            {
+                vi.DSType = "true";
+            }
+
+            vi.DeviceNum = DeviceNum;
+            vi.MachineName = verInfo1[5];
+            vi.CZRNO = verInfo1[6];
+            vi.QR = verInfo1[1];
+            vi.CollectionTime = verInfo1[7];
+            vi.StressTime = verInfo1[11];
+            vi.ProductsNo = verInfo1[2];
+            // 数据保存  年月日
+            vi.YMD = verInfo1[3];
+            // 数据保存  时分秒
+            vi.HMS = verInfo1[4];
+            // 注汤前时间
+            vi.TTime = verInfo1[8];
+            // 预备
+            vi.Prepare = verInfo1[9];
+            // 溶汤温度
+            vi.DissolvingTemperature = verInfo1[10];
+            // 铸造机加压时间
+            vi.HHStressTime = verInfo1[11];
+            // 铸造机冷却时间
+            vi.HHCoolingTime = verInfo1[12];
+            // 铸造机抽芯时间
+            vi.HHLooseCoreTime = verInfo1[13];
+            // 最终加压未使用
+            vi.EndStressNotUsed = verInfo1[14];
+            // S阀用下限值
+            vi.SValvesLower = verInfo2[0];
+            // S阀用上限值
+            vi.SValvesUpper = verInfo2[1];
+            // M阀用下限值
+            vi.MValvesLower = verInfo2[2];
+            // M阀用上限值
+            vi.MValvesUpper = verInfo2[3];
+            // 加压开始
+            vi.StressStart = verInfo2[4];
+            // 加压中
+            vi.Stressing = verInfo2[5];
+            // 据点以及应用程序版本NO
+            vi.AppVerNo = verInfo1[0];
 
             // 
             List<TEMPerA> temperaList = new List<TEMPerA>();
             TEMPerA tempera = null;
-            
+
             // 1
             Dictionary<string, string[]> keyValuePairs = new Dictionary<string, string[]>();
 
             foreach (var tmp in dic[CoolingValve])
-            { 
-                foreach (var item in tmp.Value) {
+            {
+                foreach (var item in tmp.Value)
+                {
                     if (keyValuePairs.ContainsKey(item.Key))
                     {
-                        List<string> ls =  keyValuePairs[item.Key].ToList();
+                        List<string> ls = keyValuePairs[item.Key].ToList();
                         ls.Add(item.Value);
-                        keyValuePairs[item.Key] = ls.ToArray(); 
+                        keyValuePairs[item.Key] = ls.ToArray();
                     }
-                    else {
+                    else
+                    {
                         keyValuePairs.Add(item.Key, new string[] { item.Value });
                     }
-                } 
+                }
             }
-            foreach (var tmp in keyValuePairs) {
+            foreach (var tmp in keyValuePairs)
+            {
                 tempera = new TEMPerA()
                 {
                     FID = Guid.NewGuid().ToString(),
@@ -623,7 +650,7 @@ namespace DATFileReader
             // 2
             Dictionary<string, string[]> keyValuePairs2 = new Dictionary<string, string[]>();
             foreach (var tmp in dic[MoldTemperature])
-            { 
+            {
 
                 foreach (var item in tmp.Value)
                 {
@@ -644,7 +671,7 @@ namespace DATFileReader
                 tempera = new TEMPerA()
                 {
                     FID = Guid.NewGuid().ToString(),
-                    VerInfoID = vi.FID,
+                    VerInfoID = vi.FID, 
                     DicCode = MoldTemperature,
                     DicCode2 = tmp.Key,
                     DicCode3 = "",
@@ -691,7 +718,8 @@ namespace DATFileReader
             foreach (var tmp in dic[PressurePoint])
             {
                 dic3++;
-                foreach (var item in tmp.Value) {
+                foreach (var item in tmp.Value)
+                {
                     record = new PressureRecord()
                     {
                         FID = Guid.NewGuid().ToString(),
@@ -703,7 +731,7 @@ namespace DATFileReader
                         RecordVal = item.Value,
                     };
                     pressureRecords.Add(record);
-                } 
+                }
             }
 
             // 4
@@ -741,18 +769,39 @@ namespace DATFileReader
         /// <param name="vi">表头</param>
         /// <param name="temperaList">明细数据</param>
         /// <param name="pressureRecords">加压记录</param>
-        void SaveData(VerInfo vi,List<TEMPerA> temperaList,List<PressureRecord> pressureRecords)
+        void SaveData(VerInfo vi, List<TEMPerA> temperaList, List<PressureRecord> pressureRecords)
         {
-            string sql = $"SELECT COUNT(*) FROM  VerInfo WHERE QR='{vi.QR}' AND DeviceNum='{vi.DeviceNum}' AND DSType='{vi.DSType}'";
-            var count =Convert.ToInt32( MySqlHelper.ExecuteScalar(sql));
+            var startTime = DateTime.Now;
+
+            #region 组装数据
+            var targetList = pressureRecords.Where(p => p.DicCode == "TargetPressureForPressurization").AsParallel();
+            var pressauList = pressureRecords.Where(p => p.DicCode == "PressureOfPressurizedState").AsParallel();
+            var outputList = pressureRecords.Where(p => p.DicCode == "LevelOutputValueForPressurization").AsParallel();
+
+            foreach (var record in pressauList)
+            {
+                var targetRow = targetList.FirstOrDefault(p => p.VerInfoID == record.VerInfoID && p.RecordTime == record.RecordTime);
+                var outputRow = outputList.FirstOrDefault(p => p.VerInfoID == record.VerInfoID && p.RecordTime == record.RecordTime);
+
+                record.OutputVal = outputRow is null ? null : outputRow.RecordVal;
+                record.TargetVal = targetRow is null ? null : targetRow.RecordVal;
+            }
+
+            pressureRecords = pressauList.ToList();
+            #endregion
+
+
+            string sql = $"SELECT COUNT(*) FROM  VerInfo WHERE QR='{vi.QR}' AND DeviceNum='{vi.DeviceNum}' AND DSTYPE='true'";
+            var count = Convert.ToInt32(MySqlHelper.ExecuteScalar(sql));
 
             if (count > 0)
             {
                 return;
             }
-            int tCount = 20; 
 
-            using (var conn = MySqlHelper.GetConnection())
+            int tCount = 20;
+
+            using (var conn =DBConnectionFactory.GetConnection(DBTypeEnums.MYSQL))
             {
                 if (conn.State == ConnectionState.Closed)
                 {
@@ -761,44 +810,33 @@ namespace DATFileReader
 
                 var tran = conn.BeginTransaction();
 
-                MySqlHelper.InsertWitTransation(vi, "VerInfo", tran);
-                 
-                for (int i = 0; i < (int)Math.Ceiling((decimal)temperaList.Count / tCount); i++) {
-                    MySqlHelper.BulkInsertWitTransation(temperaList.Skip(i * tCount).Take(tCount).ToList(), "TEMPerA", tran); 
-                }
-                 
-                for (int i = 0; i < (int)Math.Ceiling((decimal)pressureRecords.Count / tCount); i++)
+                if (vi.DSType=="true")
                 {
-                    MySqlHelper.BulkInsertWitTransation(pressureRecords.Skip(i * tCount).Take(tCount).ToList(), "PressureRecord", tran);
+                    verInfoRepository.Update(vi, new { QR = vi.FID },tran);
                 }
-                //temperaList.ForEach(p =>
-                //{
-                //    try
-                //    {
-                //        MySqlHelper.InsertWitTransation(p, "TEMPerA", tran);
-                //    }
-                //    catch (Exception e)
-                //    {
-                //        LogHelper.Error(e);
-                //    }
-                //});
+                else
+                {
+                    verInfoRepository.Insert(vi,tran);
+                }
 
-                //pressureRecords.ForEach(p =>
-                //{
-                //    try
-                //    {
-                //        MySqlHelper.InsertWitTransation(p, "PressureRecord", tran);
-                //    }
-                //    catch (Exception e)
-                //    {
-                //        LogHelper.Error(e);
-                //    }
+                temPerARepository.InsertBulk(temperaList, tran);
+                pressureRepository.InsertBulk(pressureRecords, tran);
 
-                //});
+                //for (int i = 0; i < (int)Math.Ceiling((decimal)temperaList.Count / tCount); i++)
+                //{
+                //    temPerARepository.InsertBulk(temperaList.Skip(i * tCount).Take(tCount).ToList());
+                //}
+
+                //for (int i = 0; i < (int)Math.Ceiling((decimal)pressureRecords.Count / tCount); i++)
+                //{
+                //    pressureRepository.InsertBulk(pressureRecords.Skip(i * tCount).Take(tCount).ToList());
+                //}
+
 
                 tran.Commit();
+                var timespan = DateTime.Now - startTime;
 
-                LogHelper.Info($"【{vi.QR}】数据保存成功");
+                LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
             }
         }
         /// <summary>

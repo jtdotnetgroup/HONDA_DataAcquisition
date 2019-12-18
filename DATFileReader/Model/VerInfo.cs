@@ -23,7 +23,7 @@ namespace DATFileReader.Model
         public string QR { get; set; }
         // 数据收集时间
         public string CollectionTime { get; set; }
-        // 铸造加压时间(0.1s)
+        // 铸造机加压时间
         public string StressTime { get; set; }
         // 制品(shot）NO
         public string ProductsNo { get; set; }
@@ -61,5 +61,7 @@ namespace DATFileReader.Model
         public string DSType { get; set; }
         // 据点以及应用程序版本NO
         public string AppVerNo { get; set; }
+        //加压持续时间
+        public  string PressureDuration { get; set; }
     } 
 }

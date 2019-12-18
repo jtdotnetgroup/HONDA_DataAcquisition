@@ -17,6 +17,17 @@ namespace DATFileReader.Model
         public string DicCode2 { get; set; }
         public string DicCode3 { get; set; }
         public string RecordTime { get; set; }
-        public string RecordVal { get; set; } 
+        /// <summary>
+        /// 加圧用実態圧力
+        /// </summary>
+        public string RecordVal { get; set; }
+        /// <summary>
+        /// 加圧用目標圧力
+        /// </summary>
+        public string TargetVal { get; set; }
+        /// <summary>
+        /// 加圧用ﾚｷﾞｭﾚｰﾀｰ出力値
+        /// </summary>
+        public string OutputVal { get; set; }
     }
 }
