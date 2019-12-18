@@ -812,7 +812,7 @@ namespace DATFileReader
 
                 if (vi.DSType=="true")
                 {
-                    verInfoRepository.Update(vi, new { QR = vi.FID },tran);
+                    verInfoRepository.Update(vi, new { QR = vi.QR },tran);
                 }
                 else
                 {
