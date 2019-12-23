@@ -18,9 +18,6 @@ namespace DATFileReader
     public partial class FrmMain : Form
     {
 
-        VerInfoRepository verInfoRepository = new VerInfoRepository();
-        TEMPerARepository temPerARepository = new TEMPerARepository();
-        PressureRepository pressureRepository = new PressureRepository();
 
         #region 窗体
         public FrmMain()
@@ -36,14 +33,19 @@ namespace DATFileReader
         #endregion
 
         #region 定义初始化公共变量
-        // 是否运行
-        private bool isRunning { get; set; }
-        string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();
-        string scanInterval = ConfigurationManager.AppSettings["ScanInterval"];
-        private static string configPath = System.Windows.Forms.Application.StartupPath + "\\" + "DATFileReader.exe.config";
-        public bool SD = false;
-        Timer timerInit = null;
-        Timer timer = null;
+        // 是否运行 
+        VerInfoRepository verInfoRepository = new VerInfoRepository();
+        TEMPerARepository temPerARepository = new TEMPerARepository();
+        PressureRepository pressureRepository = new PressureRepository();
+        private bool isRunning { get; set; }                                                                            // 是否执行中
+        string DeviceNum = ConfigurationManager.AppSettings["DeviceNum"].ToString();                                    // 几号机
+        string scanInterval = ConfigurationManager.AppSettings["ScanInterval"];                                         // 定时秒数 
+        private bool SD = false;                    // 是否点击采集过
+        Timer timerInit = null;                     // 定时点击开始采集
+        Timer timer = null;                         // 定时采集 
+        List<string> EdList = new List<string>();   // 已经插入到数据库的文件
+        // 开始采集定时器
+        int sm = 1;
         #endregion
 
         /// <summary>
@@ -80,10 +82,10 @@ namespace DATFileReader
                     timerInit.Start();
                 }
             }
-            if (!MySqlHelper.IsOpen())
-            {
-                LogHelper.Info($"网络连接失败!");
-            }
+            //if (!MySqlHelper.IsOpen())
+            //{
+            //    LogHelper.Info($"网络连接失败!");
+            //}
         }
         /// <summary>
         /// 浏览文件
@@ -110,6 +112,7 @@ namespace DATFileReader
             {
                 timerInit.Enabled = false;
                 timerInit.Stop();
+                timerInit = null;
             }
             SD = true;  // 表示点击过开始采集
             if (timer == null)
@@ -140,14 +143,17 @@ namespace DATFileReader
                 LogHelper.Info("结束采集");
             }
         }
-        // 已经插入到数据库的文件
-        List<string> EdList = new List<string>();
-        // 开始采集定时器
-        int sm = 1;
+        /// <summary>
+        /// 定时器
+        /// </summary>
         private void Timer_Tick(object sender, EventArgs e)
         {
             try
             {
+                if (sm % 100 == 0 && sm >= 100)
+                {
+                    txtLog.Text = "";
+                }
                 LogHelper.Info($"定时扫描(次数)：" + sm);
                 TimerSave();
                 sm++;
@@ -175,7 +181,7 @@ namespace DATFileReader
                         foreach (var f in filesName)
                         {
                             // 过滤已经插入到数据库
-                            if (EdList.Any(a => a.Equals(f))) { continue; }
+                            //if (EdList.Any(a => a.Equals(f))) { continue; }
                             LogHelper.Info($"解释文件【{f}】");
                             var data = DatFileReader.Open(f);
                             string[] row = data.Split(new string[] { ",\r\n" }, StringSplitOptions.None);
@@ -193,7 +199,7 @@ namespace DATFileReader
                                         break;
                                     }
                             }
-                            EdList.Add(f);
+                            //EdList.Add(f);
                         }
 
                         isRunning = false;
@@ -771,6 +777,25 @@ namespace DATFileReader
         /// <param name="pressureRecords">加压记录</param>
         void SaveData(VerInfo vi, List<TEMPerA> temperaList, List<PressureRecord> pressureRecords)
         {
+            #region 查询是否有该条记录
+            var viwhere = new VerInfo()
+            {
+                QR = vi.QR,
+                DeviceNum = vi.DeviceNum,
+                DSType = "true"
+            };
+            var dic = new Dictionary<string, CompareEnum>();
+            dic.Add("QR", CompareEnum.Equal);
+            dic.Add("DeviceNum", CompareEnum.Equal);
+            dic.Add("DSTYPE", CompareEnum.Equal);
+            var count = verInfoRepository.Select(viwhere, dic).Count();
+
+            if (count > 0)
+            {
+                return;
+            }
+            #endregion
+
             var startTime = DateTime.Now;
 
             #region 组装数据
@@ -789,19 +814,9 @@ namespace DATFileReader
 
             pressureRecords = pressauList.ToList();
             #endregion
-
-
-            string sql = $"SELECT COUNT(*) FROM  VerInfo WHERE QR='{vi.QR}' AND DeviceNum='{vi.DeviceNum}' AND DSTYPE='true'";
-            var count = Convert.ToInt32(MySqlHelper.ExecuteScalar(sql));
-
-            if (count > 0)
-            {
-                return;
-            }
-
-            int tCount = 20;
-
-            using (var conn =DBConnectionFactory.GetConnection(DBTypeEnums.MYSQL))
+            
+            // 开始事务
+            using (var conn = DBConnectionFactory.GetConnection(DBTypeEnums.MYSQL))
             {
                 if (conn.State == ConnectionState.Closed)
                 {
@@ -845,7 +860,7 @@ namespace DATFileReader
         private void SaveConfig(string key, string value)
         {
             ExeConfigurationFileMap ecf = new ExeConfigurationFileMap();
-            ecf.ExeConfigFilename = configPath;
+            ecf.ExeConfigFilename = System.Windows.Forms.Application.StartupPath + "\\" + "DATFileReader.exe.config";   // 获取上一次保存的设置
             Configuration config = System.Configuration.ConfigurationManager.OpenMappedExeConfiguration(ecf, ConfigurationUserLevel.None);
             if (config.AppSettings.Settings[key] != null)
             {

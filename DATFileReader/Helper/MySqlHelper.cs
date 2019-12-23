@@ -18,7 +18,7 @@ namespace DATFileReader
 #if DEBUG
         public static string Conn = ConfigurationManager.ConnectionStrings["TestDBConnection"].ConnectionString; //XXX的为修改项
 #else
-      public static string Conn = ConfigurationManager.ConnectionStrings["ProdDBConnection"].ConnectionString; //XXX的为修改项
+      public static string Conn = ConfigurationManager.ConnectionStrings["TestDBConnection"].ConnectionString; //XXX的为修改项
 #endif  
         /// <summary>
         /// 给定连接的数据库用假设参数执行一个sql命令（不返回数据集）
