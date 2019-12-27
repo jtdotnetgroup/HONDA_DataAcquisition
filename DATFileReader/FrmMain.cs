@@ -53,7 +53,6 @@ namespace DATFileReader
         /// </summary>
         void Init()
         {
-
             if (string.IsNullOrWhiteSpace(DeviceNum))
             {
                 if (InputDialog.Show("请输入机台号", out DeviceNum).Equals(DialogResult.OK))
@@ -814,7 +813,7 @@ namespace DATFileReader
 
             pressureRecords = pressauList.ToList();
             #endregion
-            
+
             // 开始事务
             using (var conn = DBConnectionFactory.GetConnection(DBTypeEnums.MYSQL))
             {
@@ -825,13 +824,13 @@ namespace DATFileReader
 
                 var tran = conn.BeginTransaction();
 
-                if (vi.DSType=="true")
+                if (vi.DSType == "true")
                 {
-                    verInfoRepository.Update(vi, new { QR = vi.QR },tran);
+                    verInfoRepository.Update(vi, new { QR = vi.QR }, tran);
                 }
                 else
                 {
-                    verInfoRepository.Insert(vi,tran);
+                    verInfoRepository.Insert(vi, tran);
                 }
 
                 temPerARepository.InsertBulk(temperaList, tran);
@@ -852,6 +851,9 @@ namespace DATFileReader
                 var timespan = DateTime.Now - startTime;
 
                 LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
+
+                //pressureRecords.Max(m=>m.OutputVal)
+                MySqlHelper.ExecuteNonQuery($"call ver_qr('{vi.QR}')", new MySql.Data.MySqlClient.MySqlParameter[] { });
             }
         }
         /// <summary>
