@@ -76,13 +76,21 @@ namespace DataAccess
         {
             string sql = SqlBuilder.GetInsertBulkSql<T>();
             IDbConnection conn = tran == null ? DBConnectionFactory.GetConnection(DbType) : tran.Connection;
-
-            var result = tran == null ? conn.Execute(sql, entities) : conn.Execute(sql, entities, tran);
-            if (tran == null)
+            try
+            {
+                var result = tran == null ? conn.Execute(sql, entities) : conn.Execute(sql, entities, tran);
+                if (tran == null)
+                {
+                    conn.Close();
+                }
+                return result == entities.Count;
+            }
+            catch (System.Exception)
             {
                 conn.Close();
+                return false;
             }
-            return result == entities.Count;
+            
         }
 
         public virtual bool Update(T entity, object where, IDbTransaction tran = null)

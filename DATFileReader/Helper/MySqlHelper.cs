@@ -39,7 +39,26 @@ namespace DATFileReader
                 return val;
             }
         }
+        /// <summary>
+        /// 给定连接的数据库用假设参数执行一个sql命令（不返回数据集）
+        /// </summary>  
+        /// <param name="cmdText">存储过程名称或者sql命令语句</param>
+        /// <param name="commandParameters">执行命令所用参数的集合</param>
+        /// <returns>执行命令所影响的行数</returns>
+        public static int ExecuteNonQueryStoredProcedure(string cmdText, params MySqlParameter[] commandParameters)
+        {
+            
+            MySqlCommand cmd = new MySqlCommand();
 
+            cmd.CommandTimeout = 600;
+            using (MySqlConnection conn = new MySqlConnection(Conn))
+            {
+                PrepareCommand(cmd, conn, null, CommandType.StoredProcedure, cmdText, commandParameters);
+                int val = cmd.ExecuteNonQuery();
+                cmd.Parameters.Clear();
+                return val;
+            }
+        }
         public static object ExecuteScalar(string sql)
         {
             MySqlCommand cmd = new MySqlCommand();

@@ -125,7 +125,7 @@ namespace DATFileReader
                 SaveConfig("dirPath", txtPath.Text.ToString());
                 ConfigurationManager.RefreshSection("appSettings");
 
-                timer.Interval = Convert.ToInt32(numInterval.Value * 100);
+                timer.Interval = Convert.ToInt32(numInterval.Value * 1000);
                 timer.Tick += Timer_Tick;
                 btnStart.Text = "结束采集";
                 btnPath.Visible = false;
@@ -849,11 +849,17 @@ namespace DATFileReader
 
                 tran.Commit();
                 var timespan = DateTime.Now - startTime;
-
-                LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
-
-                //pressureRecords.Max(m=>m.OutputVal)
-                MySqlHelper.ExecuteNonQuery($"call ver_qr('{vi.QR}')", new MySql.Data.MySqlClient.MySqlParameter[] { });
+                
+                try
+                {
+                    //pressureRecords.Max(m=>m.OutputVal)
+                    MySqlHelper.ExecuteNonQueryStoredProcedure($"ver_qr", new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("str", vi.QR) });
+                    LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
+                }
+                catch (Exception ex)
+                {
+                    LogHelper.Info($"【{vi.QR}】数据call ver_qr('{vi.QR}')异常【{ex.Message}】");
+                }
             }
         }
         /// <summary>
@@ -874,6 +880,60 @@ namespace DATFileReader
             }
 
             config.Save(ConfigurationSaveMode.Modified);
+        }
+
+
+
+        //
+        private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (MessageBox.Show("是否确认退出程序？", "退出", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
+            {
+                // 关闭所有的线程
+                this.Dispose();
+                this.Close();
+            }
+            else
+            {
+                e.Cancel = true;
+            }
+        }
+
+        private void FrmMain_SizeChanged(object sender, EventArgs e)
+        {
+            //判断是否选择的是最小化按钮
+            if (WindowState == FormWindowState.Minimized)
+            {
+                //隐藏任务栏区图标
+                this.ShowInTaskbar = false;
+                //图标显示在托盘区
+                notifyIcon1.Visible = true;
+            }
+        }
+
+        private void notifyIcon1_DoubleClick(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                this.WindowState = FormWindowState.Normal;
+                this.notifyIcon1.Visible = false;
+                this.ShowInTaskbar = true;
+            }
+        }
+
+        private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            if (WindowState == FormWindowState.Minimized)
+            {
+                //还原窗体显示    
+                WindowState = FormWindowState.Normal;
+                //激活窗体并给予它焦点
+                this.Activate();
+                //任务栏区显示图标
+                this.ShowInTaskbar = true;
+                //托盘区图标隐藏
+                notifyIcon1.Visible = false;
+            }
         }
     }
 }
