@@ -199,14 +199,14 @@ namespace DATFileReader
                                     }
                             }
                             //EdList.Add(f);
-                        }
-
-                        isRunning = false;
-
+                        }  
                     }
                     catch (Exception exception)
                     {
                         LogHelper.Error(exception);
+                    }
+                    finally
+                    {
                         isRunning = false;
                     }
                 });
@@ -287,11 +287,18 @@ namespace DATFileReader
 
             if (vi == null)
             {
-                vi = new VerInfo {FID = Guid.NewGuid().ToString(), DSType = "DAT"};
+                vi = new VerInfo { FID = Guid.NewGuid().ToString(), DSType = "DAT" };
+            }
+            else if (vi.DSType != "DAT")
+            {
+                vi.DSType = "true";
+            }
+            else if (vi.DSType == "true") {
+                return;
             }
             else
             {
-                vi.DSType = "true";
+                return;
             }
 
             vi.AppVerNo = tmpInfo[0];
@@ -304,31 +311,19 @@ namespace DATFileReader
             List<TEMPerA> temperaList = new List<TEMPerA>();
             TEMPerA tempera = null;
             List<string> tmpStringList = new List<string>();
-            string[] tmpList = null;
-            string[] tmpList2 = { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
-            string[] tmpList3 = { "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" };
+            string[] tmpList = null; 
 
             foreach (var item in dic)
             {
                 foreach (var tmp in item.Value)
                 {
                     tmpList = tmp.Value.Split(new string[] { "," }, StringSplitOptions.None);
-                    if (tmpList.Length == 12)
+                    tmpStringList.AddRange(tmpList);
+                    for (int k = 0; k < 32 - tmpList.Length; k++)
                     {
-                        tmpStringList = new List<string>();
-                        tmpStringList.AddRange(tmpList);
-                        tmpStringList.AddRange(tmpList2);
-                        tmpList = null;
-                        tmpList = tmpStringList.ToArray();
-                    }
-                    if (tmpList.Length == 1)
-                    {
-                        tmpStringList = new List<string>();
-                        tmpStringList.AddRange(tmpList);
-                        tmpStringList.AddRange(tmpList3);
-                        tmpList = null;
-                        tmpList = tmpStringList.ToArray();
-                    }
+                        tmpStringList.Add("");
+                    } 
+                    tmpList = tmpStringList.ToArray();
                     //
                     tempera = new TEMPerA()
                     {
@@ -539,9 +534,17 @@ namespace DATFileReader
                 vi = new VerInfo() { FID = Guid.NewGuid().ToString() };
                 vi.DSType = "STA";
             }
-            else
+            else if (vi.DSType != "STA")
             {
                 vi.DSType = "true";
+            }
+            else if (vi.DSType == "true")
+            {
+                return;
+            }
+            else
+            {
+                return;
             }
 
             vi.DeviceNum = DeviceNum;
@@ -848,18 +851,18 @@ namespace DATFileReader
 
 
                 tran.Commit();
-                var timespan = DateTime.Now - startTime;
                 
-                try
-                {
-                    //pressureRecords.Max(m=>m.OutputVal)
-                    MySqlHelper.ExecuteNonQueryStoredProcedure($"ver_qr", new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("str", vi.QR) });
-                    LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
-                }
-                catch (Exception ex)
-                {
-                    LogHelper.Info($"【{vi.QR}】数据call ver_qr('{vi.QR}')异常【{ex.Message}】");
-                }
+            }
+            //
+            var timespan = DateTime.Now - startTime;
+            try
+            { 
+                MySqlHelper.ExecuteNonQueryStoredProcedure($"ver_qr", new MySql.Data.MySqlClient.MySqlParameter[] { new MySql.Data.MySqlClient.MySqlParameter("str", vi.QR) });
+                LogHelper.Info($"【{vi.QR}】数据保存成功，数据写入耗时【{timespan.TotalSeconds}】秒");
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Info($"【{vi.QR}】数据call ver_qr('{vi.QR}')异常【{ex.Message}】");
             }
         }
         /// <summary>
