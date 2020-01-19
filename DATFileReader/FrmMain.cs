@@ -79,6 +79,7 @@ namespace DATFileReader
                     timerInit.Interval = 10000;
                     timerInit.Tick += btnStart_Click;
                     timerInit.Start();
+                    WindowState = FormWindowState.Minimized;
                 }
             }
             //if (!MySqlHelper.IsOpen())
@@ -152,6 +153,10 @@ namespace DATFileReader
                 if (sm % 100 == 0 && sm >= 100)
                 {
                     txtLog.Text = "";
+                }
+                if (sm == int.MaxValue)
+                {
+                    sm = 0;
                 }
                 LogHelper.Info($"定时扫描(次数)：" + sm);
                 TimerSave();
@@ -890,16 +895,19 @@ namespace DATFileReader
         //
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (MessageBox.Show("是否确认退出程序？", "退出", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
-            {
-                // 关闭所有的线程
-                this.Dispose();
-                this.Close();
-            }
-            else
-            {
-                e.Cancel = true;
-            }
+            //if (MessageBox.Show("是否确认退出程序？", "退出", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
+            //{
+            //    // 关闭所有的线程
+            //    this.Dispose();
+            //    this.Close();
+            //}
+            //else
+            //{
+            //    e.Cancel = true;
+            //}
+            WindowState = FormWindowState.Minimized;
+            e.Cancel = true;
+           
         }
 
         private void FrmMain_SizeChanged(object sender, EventArgs e)
